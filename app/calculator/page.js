@@ -11,8 +11,6 @@ const FUEL_LABELS = {
   electric: "전기",
 };
 
-const WORK_DAYS = [1, 2, 3, 4, 5, 6];
-
 function debounce(fn, delay) {
   let timer;
   return function (...args) {
@@ -34,9 +32,7 @@ export default function CalculatorPage() {
 
   const [fuelType, setFuelType] = useState("gasoline");
   const [efficiency, setEfficiency] = useState("");
-  const [hipass, setHipass] = useState(true);
   const [parking, setParking] = useState("");
-  const [workDays, setWorkDays] = useState(5);
 
   const [fuelPrices, setFuelPrices] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -138,7 +134,7 @@ export default function CalculatorPage() {
       }
 
       const routeRes = await fetch(
-        `/api/route?origin=${oc.x},${oc.y}&destination=${dc.x},${dc.y}&hipass=${hipass}`
+        `/api/route?origin=${oc.x},${oc.y}&destination=${dc.x},${dc.y}`
       );
       if (!routeRes.ok) throw new Error("경로를 계산할 수 없습니다");
       const route = await routeRes.json();
@@ -160,8 +156,8 @@ export default function CalculatorPage() {
         dailyToll: Math.round(dailyToll),
         dailyParking: Math.round(dailyParking),
         dailyTotal: Math.round(dailyTotal),
-        weeklyTotal: Math.round(dailyTotal * workDays),
-        monthlyTotal: Math.round(dailyTotal * workDays * 4.3),
+        weeklyTotal: Math.round(dailyTotal * 5),
+        monthlyTotal: Math.round(dailyTotal * 5 * 4.3),
       });
     } catch (e) {
       setError(e.message);
@@ -316,45 +312,6 @@ export default function CalculatorPage() {
               />
             </div>
 
-            {/* 하이패스 + 출근일수 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  하이패스
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[true, false].map((v) => (
-                    <button
-                      key={String(v)}
-                      onClick={() => setHipass(v)}
-                      className={`rounded-2xl py-2.5 text-sm font-semibold transition ${
-                        hipass === v
-                          ? "bg-emerald-600 text-white"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {v ? "있음" : "없음"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  주 출근일수
-                </label>
-                <select
-                  value={workDays}
-                  onChange={(e) => setWorkDays(Number(e.target.value))}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
-                >
-                  {WORK_DAYS.map((d) => (
-                    <option key={d} value={d}>
-                      주 {d}일
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
             {/* 주차비 */}
             <div>
