@@ -211,7 +211,7 @@ export default function CalculatorPage() {
                 value={origin}
                 onChange={handleOriginInput}
                 onBlur={() => setTimeout(() => setOriginDropdown([]), 150)}
-                placeholder="예: 인천 송도동"
+                placeholder="예: 송도더샵16단지 / 수원한일타운아파트 110동"
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
               />
               {originDropdown.length > 0 && (
@@ -242,7 +242,7 @@ export default function CalculatorPage() {
                 value={destination}
                 onChange={handleDestInput}
                 onBlur={() => setTimeout(() => setDestDropdown([]), 150)}
-                placeholder="예: 서울 테헤란로"
+                placeholder="예: 삼성역 5번 출구 / 테헤란로 133 한국타이어빌딩"
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
               />
               {destDropdown.length > 0 && (
