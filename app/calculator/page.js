@@ -394,10 +394,14 @@ export default function CalculatorPage() {
                 월 주차비 (원)
               </label>
               <input
-                type="number"
-                value={parking}
-                onChange={(e) => setParking(e.target.value)}
-                placeholder="예: 100000"
+                type="text"
+                inputMode="numeric"
+                value={parking ? Number(parking).toLocaleString() : ""}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/,/g, "");
+                  if (raw === "" || /^\d+$/.test(raw)) setParking(raw);
+                }}
+                placeholder="예: 100,000"
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
               />
             </div>
