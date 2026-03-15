@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import Script from "next/script";
 
 const FUEL_LABELS = {
   gasoline: "휘발유",
@@ -12,13 +13,29 @@ const FUEL_LABELS = {
 
 const WORK_DAYS = [1, 2, 3, 4, 5, 6];
 
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 export default function CalculatorPage() {
+  const [kakaoLoaded, setKakaoLoaded] = useState(false);
+
   const [origin, setOrigin] = useState("");
+  const [originCoord, setOriginCoord] = useState(null);
+  const [originDropdown, setOriginDropdown] = useState([]);
+
   const [destination, setDestination] = useState("");
+  const [destCoord, setDestCoord] = useState(null);
+  const [destDropdown, setDestDropdown] = useState([]);
+
   const [fuelType, setFuelType] = useState("gasoline");
-  const [efficiency, setEfficiency] = useState(""); // km/L or km/kWh
+  const [efficiency, setEfficiency] = useState("");
   const [hipass, setHipass] = useState(true);
-  const [parking, setParking] = useState(""); // 원/일
+  const [parking, setParking] = useState("");
   const [workDays, setWorkDays] = useState(5);
 
   const [fuelPrices, setFuelPrices] = useState(null);
@@ -26,7 +43,6 @@ export default function CalculatorPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
-  // 앱 로드 시 유가 미리 fetch
   useEffect(() => {
     fetch("/api/fuel-price")
       .then((r) => r.json())
@@ -34,10 +50,63 @@ export default function CalculatorPage() {
       .catch(() => {});
   }, []);
 
-  async function geocode(address) {
-    const res = await fetch(`/api/geocode?query=${encodeURIComponent(address)}`);
-    if (!res.ok) throw new Error(`"${address}" 주소를 찾을 수 없습니다`);
-    return res.json();
+  const searchPlace = useCallback(
+    (query) =>
+      new Promise((resolve) => {
+        if (!kakaoLoaded || !query || query.length < 2) return resolve([]);
+        if (!window.kakao?.maps) return resolve([]);
+        const ps = new window.kakao.maps.services.Places();
+        ps.keywordSearch(query, (data, status) => {
+          if (status === window.kakao.maps.services.Status.OK) {
+            resolve(data.slice(0, 6));
+          } else {
+            resolve([]);
+          }
+        });
+      }),
+    [kakaoLoaded]
+  );
+
+  const debouncedSearchOrigin = useCallback(
+    debounce(async (val) => {
+      const results = await searchPlace(val);
+      setOriginDropdown(results);
+    }, 300),
+    [searchPlace]
+  );
+
+  const debouncedSearchDest = useCallback(
+    debounce(async (val) => {
+      const results = await searchPlace(val);
+      setDestDropdown(results);
+    }, 300),
+    [searchPlace]
+  );
+
+  function handleOriginInput(e) {
+    const val = e.target.value;
+    setOrigin(val);
+    setOriginCoord(null);
+    debouncedSearchOrigin(val);
+  }
+
+  function handleDestInput(e) {
+    const val = e.target.value;
+    setDestination(val);
+    setDestCoord(null);
+    debouncedSearchDest(val);
+  }
+
+  function selectOrigin(place) {
+    setOrigin(place.place_name);
+    setOriginCoord({ x: place.x, y: place.y });
+    setOriginDropdown([]);
+  }
+
+  function selectDest(place) {
+    setDestination(place.place_name);
+    setDestCoord({ x: place.x, y: place.y });
+    setDestDropdown([]);
   }
 
   async function calculate() {
@@ -54,44 +123,39 @@ export default function CalculatorPage() {
 
     setLoading(true);
     try {
-      // 1. 좌표 변환
-      const [originCoord, destCoord] = await Promise.all([
-        geocode(origin),
-        geocode(destination),
-      ]);
+      // 좌표: 드롭다운 선택 시 이미 있음, 아니면 geocode API로 fallback
+      let oc = originCoord;
+      let dc = destCoord;
+      if (!oc) {
+        const res = await fetch(`/api/geocode?query=${encodeURIComponent(origin)}`);
+        if (!res.ok) throw new Error(`"${origin}" 주소를 찾을 수 없습니다`);
+        oc = await res.json();
+      }
+      if (!dc) {
+        const res = await fetch(`/api/geocode?query=${encodeURIComponent(destination)}`);
+        if (!res.ok) throw new Error(`"${destination}" 주소를 찾을 수 없습니다`);
+        dc = await res.json();
+      }
 
-      // 2. 경로 계산
       const routeRes = await fetch(
-        `/api/route?origin=${originCoord.x},${originCoord.y}&destination=${destCoord.x},${destCoord.y}&hipass=${hipass}`
+        `/api/route?origin=${oc.x},${oc.y}&destination=${dc.x},${dc.y}&hipass=${hipass}`
       );
       if (!routeRes.ok) throw new Error("경로를 계산할 수 없습니다");
       const route = await routeRes.json();
 
       const distanceKm = route.distance / 1000;
       const onewayToll = route.toll_fee;
-
-      // 3. 유가
-      let pricePerUnit = 0;
-      if (fuelType === "electric") {
-        pricePerUnit = 200; // 전기차 kWh당 약 200원 (완속 기준)
-      } else {
-        pricePerUnit = fuelPrices?.[fuelType] ?? 0;
-      }
-
+      const pricePerUnit =
+        fuelType === "electric" ? 200 : (fuelPrices?.[fuelType] ?? 0);
       const eff = parseFloat(efficiency);
-
-      // 4. 계산
       const roundTripKm = distanceKm * 2;
-      const dailyFuel = fuelType === "electric"
-        ? (roundTripKm / eff) * pricePerUnit
-        : (roundTripKm / eff) * pricePerUnit;
+      const dailyFuel = (roundTripKm / eff) * pricePerUnit;
       const dailyToll = onewayToll * 2;
       const dailyParking = parseFloat(parking) || 0;
       const dailyTotal = dailyFuel + dailyToll + dailyParking;
 
       setResult({
         distanceKm: distanceKm.toFixed(1),
-        pricePerUnit: Math.round(pricePerUnit),
         dailyFuel: Math.round(dailyFuel),
         dailyToll: Math.round(dailyToll),
         dailyParking: Math.round(dailyParking),
@@ -108,6 +172,14 @@ export default function CalculatorPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
+      <Script
+        src={`//dapi.kakao.com/v2/maps/sdk.js?appkey=7ff44a7770dcb8ae5e36b86bfbd8e979&libraries=services&autoload=false`}
+        strategy="afterInteractive"
+        onLoad={() => {
+          window.kakao.maps.load(() => setKakaoLoaded(true));
+        }}
+      />
+
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="mx-auto max-w-xl px-6 py-4 flex items-center justify-between">
@@ -132,34 +204,67 @@ export default function CalculatorPage() {
             자차 출퇴근에 드는 실비(연료비·톨비·주차비)를 계산합니다.
           </p>
 
-          {/* 입력 폼 */}
           <div className="mt-8 space-y-4">
             {/* 출발지 */}
-            <div>
+            <div className="relative">
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 출발지
               </label>
               <input
                 type="text"
                 value={origin}
-                onChange={(e) => setOrigin(e.target.value)}
+                onChange={handleOriginInput}
+                onBlur={() => setTimeout(() => setOriginDropdown([]), 150)}
                 placeholder="예: 인천 송도동"
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
               />
+              {originDropdown.length > 0 && (
+                <ul className="absolute z-10 mt-1 w-full rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                  {originDropdown.map((place) => (
+                    <li
+                      key={place.id}
+                      onMouseDown={() => selectOrigin(place)}
+                      className="px-4 py-3 text-sm cursor-pointer hover:bg-emerald-50 border-b border-slate-100 last:border-0"
+                    >
+                      <span className="font-semibold">{place.place_name}</span>
+                      <span className="ml-2 text-xs text-slate-400">
+                        {place.address_name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* 도착지 */}
-            <div>
+            <div className="relative">
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 도착지
               </label>
               <input
                 type="text"
                 value={destination}
-                onChange={(e) => setDestination(e.target.value)}
+                onChange={handleDestInput}
+                onBlur={() => setTimeout(() => setDestDropdown([]), 150)}
                 placeholder="예: 서울 테헤란로"
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
               />
+              {destDropdown.length > 0 && (
+                <ul className="absolute z-10 mt-1 w-full rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                  {destDropdown.map((place) => (
+                    <li
+                      key={place.id}
+                      onMouseDown={() => selectDest(place)}
+                      className="px-4 py-3 text-sm cursor-pointer hover:bg-emerald-50 border-b border-slate-100 last:border-0"
+                    >
+                      <span className="font-semibold">{place.place_name}</span>
+                      <span className="ml-2 text-xs text-slate-400">
+                        {place.address_name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* 유종 */}
@@ -211,7 +316,7 @@ export default function CalculatorPage() {
               />
             </div>
 
-            {/* 하이패스 + 주차비 + 출근일수 */}
+            {/* 하이패스 + 출근일수 */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -233,7 +338,6 @@ export default function CalculatorPage() {
                   ))}
                 </div>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                   주 출근일수
@@ -252,6 +356,7 @@ export default function CalculatorPage() {
               </div>
             </div>
 
+            {/* 주차비 */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 일 주차비 (원, 없으면 0)
@@ -271,7 +376,6 @@ export default function CalculatorPage() {
               </p>
             )}
 
-            {/* 계산 버튼 */}
             <button
               onClick={calculate}
               disabled={loading}
@@ -285,16 +389,12 @@ export default function CalculatorPage() {
           {result && (
             <div className="mt-8 space-y-4">
               <h2 className="text-lg font-extrabold">계산 결과</h2>
-
-              {/* 편도 거리 */}
               <p className="text-sm text-slate-500">
                 편도 거리:{" "}
                 <span className="font-semibold text-slate-800">
                   {result.distanceKm} km
                 </span>
               </p>
-
-              {/* 일/주/월 비용 카드 */}
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: "일", value: result.dailyTotal },
@@ -313,8 +413,6 @@ export default function CalculatorPage() {
                   </div>
                 ))}
               </div>
-
-              {/* 항목별 breakdown */}
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 space-y-3">
                 {[
                   { label: "연료비", value: result.dailyFuel },
@@ -333,8 +431,6 @@ export default function CalculatorPage() {
                   <span>{result.dailyTotal.toLocaleString()}원</span>
                 </div>
               </div>
-
-              {/* WithRide 유입 멘트 */}
               <div className="rounded-3xl bg-slate-900 p-5 text-white">
                 <p className="text-sm font-bold">
                   월 {result.monthlyTotal.toLocaleString()}원, WithRide로 줄일 수 있어요.
