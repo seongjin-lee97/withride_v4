@@ -16,25 +16,25 @@ const CAR_CATEGORIES = [
     key: "small",
     label: "경차/소형",
     desc: "모닝, 레이, 스파크 등",
-    efficiency: 11,
+    efficiency: { gasoline: 11, diesel: 13, lpg: 9, electric: 6.0 },
   },
   {
     key: "mid",
     label: "준중형/중형",
     desc: "아반떼, K3, 쏘나타, BMW 3시리즈 등",
-    efficiency: 10,
+    efficiency: { gasoline: 10, diesel: 12, lpg: 8.5, electric: 5.5 },
   },
   {
     key: "suv",
     label: "SUV/RV",
     desc: "투싼, 스포티지, 쏘렌토, 카니발, BMW X3 등",
-    efficiency: 8.5,
+    efficiency: { gasoline: 8.5, diesel: 10, lpg: 7, electric: 4.5 },
   },
   {
     key: "large",
     label: "세단 대형",
     desc: "그랜저, K8, 벤츠 E클래스 등",
-    efficiency: 9.5,
+    efficiency: { gasoline: 9.5, diesel: 11, lpg: 8, electric: 4.5 },
   },
 ];
 
@@ -136,7 +136,15 @@ export default function CalculatorPage() {
 
   function selectCarCategory(cat) {
     setCarCategory(cat.key);
-    setEfficiency(String(cat.efficiency));
+    setEfficiency(String(cat.efficiency[fuelType] ?? ""));
+  }
+
+  function handleFuelTypeChange(key) {
+    setFuelType(key);
+    if (carCategory) {
+      const cat = CAR_CATEGORIES.find((c) => c.key === carCategory);
+      if (cat) setEfficiency(String(cat.efficiency[key] ?? ""));
+    }
   }
 
   async function calculate() {
@@ -339,7 +347,7 @@ export default function CalculatorPage() {
                 {Object.entries(FUEL_LABELS).map(([key, label]) => (
                   <button
                     key={key}
-                    onClick={() => setFuelType(key)}
+                    onClick={() => handleFuelTypeChange(key)}
                     className={`rounded-2xl py-2.5 text-sm font-semibold transition ${
                       fuelType === key
                         ? "bg-emerald-600 text-white"
