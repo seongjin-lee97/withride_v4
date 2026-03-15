@@ -1,17 +1,14 @@
 // 에너지공단 자동차 표시연비 API 프록시
-// 제조사 + 모델명으로 공인연비 조회
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const maker = searchParams.get("maker") ?? "";
   const model = searchParams.get("model") ?? "";
 
-  const url = new URL("https://apis.data.go.kr/B553530/CAREFF/getCarEffInfo");
+  const url = new URL("https://apis.data.go.kr/B553530/CAREFF/CAREFF_LIST");
   url.searchParams.set("serviceKey", process.env.ENERGY_API_KEY);
   url.searchParams.set("numOfRows", "10");
   url.searchParams.set("pageNo", "1");
-  url.searchParams.set("type", "json");
-  if (maker) url.searchParams.set("maker", maker);
-  if (model) url.searchParams.set("model", model);
+  url.searchParams.set("apiType", "json");
+  if (model) url.searchParams.set("q2", model);
 
   const res = await fetch(url.toString());
   if (!res.ok) {
@@ -21,14 +18,23 @@ export async function GET(request) {
   const data = await res.json();
   const items = data.response?.body?.items?.item ?? [];
 
+  const FUEL_MAP = {
+    "휘발유": "gasoline",
+    "경유": "diesel",
+    "LPG": "lpg",
+    "전기": "electric",
+    "하이브리드": "gasoline",
+    "플러그인하이브리드": "gasoline",
+  };
+
   return Response.json(
     items.map((i) => ({
-      maker: i.maker,
-      model: i.model,
-      fuel: i.fuel,
-      combined_efficiency: parseFloat(i.comBin ?? i.fuelEffComb ?? 0), // 복합연비
-      city_efficiency: parseFloat(i.cityBin ?? i.fuelEffCity ?? 0),
-      highway_efficiency: parseFloat(i.highBin ?? i.fuelEffHighway ?? 0),
+      maker: i.COMP_NM,
+      model: i.MODEL_NM,
+      fuel: i.FUEL_NM,
+      fuelKey: FUEL_MAP[i.FUEL_NM] ?? "gasoline",
+      efficiency: parseFloat(i.DISPLAY_EFF) || 0,
+      year: i.YEAR,
     }))
   );
 }

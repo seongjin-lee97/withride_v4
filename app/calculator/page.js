@@ -30,6 +30,10 @@ export default function CalculatorPage() {
   const [destCoord, setDestCoord] = useState(null);
   const [destDropdown, setDestDropdown] = useState([]);
 
+  const [carQuery, setCarQuery] = useState("");
+  const [carDropdown, setCarDropdown] = useState([]);
+  const [selectedCar, setSelectedCar] = useState(null);
+
   const [fuelType, setFuelType] = useState("gasoline");
   const [efficiency, setEfficiency] = useState("");
   const [parking, setParking] = useState("");
@@ -103,6 +107,31 @@ export default function CalculatorPage() {
     setDestination(place.place_name);
     setDestCoord({ x: place.x, y: place.y });
     setDestDropdown([]);
+  }
+
+  const debouncedSearchCar = useCallback(
+    debounce(async (val) => {
+      if (!val || val.length < 2) return setCarDropdown([]);
+      const res = await fetch(`/api/fuel-efficiency?model=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      setCarDropdown(Array.isArray(data) ? data : []);
+    }, 400),
+    []
+  );
+
+  function handleCarInput(e) {
+    const val = e.target.value;
+    setCarQuery(val);
+    setSelectedCar(null);
+    debouncedSearchCar(val);
+  }
+
+  function selectCar(car) {
+    setSelectedCar(car);
+    setCarQuery(`${car.maker} ${car.model}`);
+    setFuelType(car.fuelKey);
+    setEfficiency(String(car.efficiency));
+    setCarDropdown([]);
   }
 
   async function calculate() {
@@ -256,6 +285,42 @@ export default function CalculatorPage() {
                       <span className="font-semibold">{place.place_name}</span>
                       <span className="ml-2 text-xs text-slate-400">
                         {place.address_name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* 차종 검색 */}
+            <div className="relative">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                차종 검색
+              </label>
+              <input
+                type="text"
+                value={carQuery}
+                onChange={handleCarInput}
+                onBlur={() => setTimeout(() => setCarDropdown([]), 150)}
+                placeholder="예: 아반떼, 쏘나타, 카니발"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
+              />
+              {selectedCar && (
+                <p className="mt-1.5 text-xs text-emerald-600 font-medium">
+                  {selectedCar.maker} {selectedCar.model} ({selectedCar.year}) · 복합연비 {selectedCar.efficiency} km/L
+                </p>
+              )}
+              {carDropdown.length > 0 && (
+                <ul className="absolute z-10 mt-1 w-full rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                  {carDropdown.map((car, i) => (
+                    <li
+                      key={i}
+                      onMouseDown={() => selectCar(car)}
+                      className="px-4 py-3 text-sm cursor-pointer hover:bg-emerald-50 border-b border-slate-100 last:border-0"
+                    >
+                      <span className="font-semibold">{car.maker} {car.model}</span>
+                      <span className="ml-2 text-xs text-slate-400">
+                        {car.year} · {car.fuel} · {car.efficiency} km/L
                       </span>
                     </li>
                   ))}
