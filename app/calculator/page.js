@@ -11,6 +11,33 @@ const FUEL_LABELS = {
   electric: "전기",
 };
 
+const CAR_CATEGORIES = [
+  {
+    key: "small",
+    label: "경차/소형",
+    desc: "모닝, 레이, 스파크 등",
+    efficiency: 11,
+  },
+  {
+    key: "mid",
+    label: "준중형/중형",
+    desc: "아반떼, K3, 쏘나타, BMW 3시리즈 등",
+    efficiency: 10,
+  },
+  {
+    key: "suv",
+    label: "SUV/RV",
+    desc: "투싼, 스포티지, 쏘렌토, 카니발, BMW X3 등",
+    efficiency: 8.5,
+  },
+  {
+    key: "large",
+    label: "세단 대형",
+    desc: "그랜저, K8, 벤츠 E클래스 등",
+    efficiency: 9.5,
+  },
+];
+
 function debounce(fn, delay) {
   let timer;
   return function (...args) {
@@ -30,9 +57,7 @@ export default function CalculatorPage() {
   const [destCoord, setDestCoord] = useState(null);
   const [destDropdown, setDestDropdown] = useState([]);
 
-  const [carQuery, setCarQuery] = useState("");
-  const [carDropdown, setCarDropdown] = useState([]);
-  const [selectedCar, setSelectedCar] = useState(null);
+  const [carCategory, setCarCategory] = useState(null);
 
   const [fuelType, setFuelType] = useState("gasoline");
   const [efficiency, setEfficiency] = useState("");
@@ -109,29 +134,9 @@ export default function CalculatorPage() {
     setDestDropdown([]);
   }
 
-  const debouncedSearchCar = useCallback(
-    debounce(async (val) => {
-      if (!val || val.length < 2) return setCarDropdown([]);
-      const res = await fetch(`/api/fuel-efficiency?model=${encodeURIComponent(val)}`);
-      const data = await res.json();
-      setCarDropdown(Array.isArray(data) ? data : []);
-    }, 400),
-    []
-  );
-
-  function handleCarInput(e) {
-    const val = e.target.value;
-    setCarQuery(val);
-    setSelectedCar(null);
-    debouncedSearchCar(val);
-  }
-
-  function selectCar(car) {
-    setSelectedCar(car);
-    setCarQuery(`${car.maker} ${car.model}`);
-    setFuelType(car.fuelKey);
-    setEfficiency(String(car.efficiency));
-    setCarDropdown([]);
+  function selectCarCategory(cat) {
+    setCarCategory(cat.key);
+    setEfficiency(String(cat.efficiency));
   }
 
   async function calculate() {
@@ -292,39 +297,33 @@ export default function CalculatorPage() {
               )}
             </div>
 
-            {/* 차종 검색 */}
-            <div className="relative">
+            {/* 차종 카테고리 */}
+            <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                차종 검색
+                차종 선택
               </label>
-              <input
-                type="text"
-                value={carQuery}
-                onChange={handleCarInput}
-                onBlur={() => setTimeout(() => setCarDropdown([]), 150)}
-                placeholder="예: 아반떼, 쏘나타, 카니발"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
-              />
-              {selectedCar && (
-                <p className="mt-1.5 text-xs text-emerald-600 font-medium">
-                  {selectedCar.maker} {selectedCar.model} ({selectedCar.year}) · 복합연비 {selectedCar.efficiency} km/L
+              <div className="grid grid-cols-2 gap-2">
+                {CAR_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.key}
+                    onClick={() => selectCarCategory(cat)}
+                    className={`rounded-2xl px-4 py-3 text-left transition ${
+                      carCategory === cat.key
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    <p className="text-sm font-bold">{cat.label}</p>
+                    <p className={`text-xs mt-0.5 ${carCategory === cat.key ? "text-emerald-100" : "text-slate-400"}`}>
+                      {cat.desc}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              {carCategory && (
+                <p className="mt-1.5 text-xs text-slate-400">
+                  출퇴근 실연비 기준 자동 입력 · 아래에서 직접 수정 가능
                 </p>
-              )}
-              {carDropdown.length > 0 && (
-                <ul className="absolute z-10 mt-1 w-full rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-                  {carDropdown.map((car, i) => (
-                    <li
-                      key={i}
-                      onMouseDown={() => selectCar(car)}
-                      className="px-4 py-3 text-sm cursor-pointer hover:bg-emerald-50 border-b border-slate-100 last:border-0"
-                    >
-                      <span className="font-semibold">{car.maker} {car.model}</span>
-                      <span className="ml-2 text-xs text-slate-400">
-                        {car.year} · {car.fuel} · {car.efficiency} km/L
-                      </span>
-                    </li>
-                  ))}
-                </ul>
               )}
             </div>
 
