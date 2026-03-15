@@ -66,6 +66,7 @@ export default function CalculatorPage() {
   const [fuelPrices, setFuelPrices] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [selectedPeriod, setSelectedPeriod] = useState("일");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -437,36 +438,47 @@ export default function CalculatorPage() {
                   { label: "주", value: result.weeklyTotal },
                   { label: "월", value: result.monthlyTotal },
                 ].map(({ label, value }) => (
-                  <div
+                  <button
                     key={label}
-                    className="rounded-3xl bg-emerald-600 p-4 text-center text-white"
+                    onClick={() => setSelectedPeriod(label)}
+                    className={`rounded-3xl p-4 text-center transition ${
+                      selectedPeriod === label
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
                   >
                     <p className="text-xs font-medium opacity-80">{label}간</p>
                     <p className="mt-1 text-lg font-extrabold">
                       {value.toLocaleString()}
                       <span className="text-xs font-normal">원</span>
                     </p>
-                  </div>
+                  </button>
                 ))}
               </div>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 space-y-3">
-                {[
-                  { label: "연료비", value: result.dailyFuel },
-                  { label: "톨비", value: result.dailyToll },
-                  { label: "주차비", value: result.dailyParking },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex justify-between text-sm">
-                    <span className="text-slate-500">{label} (일)</span>
-                    <span className="font-semibold">
-                      {value.toLocaleString()}원
-                    </span>
+              {(() => {
+                const multiplier = selectedPeriod === "일" ? 1 : selectedPeriod === "주" ? 5 : 5 * 4.3;
+                const period = selectedPeriod;
+                return (
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 space-y-3">
+                    {[
+                      { label: "연료비", value: result.dailyFuel },
+                      { label: "톨비", value: result.dailyToll },
+                      { label: "주차비", value: result.dailyParking },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="flex justify-between text-sm">
+                        <span className="text-slate-500">{label} ({period})</span>
+                        <span className="font-semibold">
+                          {Math.round(value * multiplier).toLocaleString()}원
+                        </span>
+                      </div>
+                    ))}
+                    <div className="border-t border-slate-200 pt-3 flex justify-between text-sm font-bold">
+                      <span>합계 ({period})</span>
+                      <span>{Math.round(result.dailyTotal * multiplier).toLocaleString()}원</span>
+                    </div>
                   </div>
-                ))}
-                <div className="border-t border-slate-200 pt-3 flex justify-between text-sm font-bold">
-                  <span>합계 (일)</span>
-                  <span>{result.dailyTotal.toLocaleString()}원</span>
-                </div>
-              </div>
+                );
+              })()}
               <div className="rounded-3xl bg-slate-900 p-5 text-white">
                 <p className="text-sm font-bold">
                   월 {result.monthlyTotal.toLocaleString()}원, WithRide로 줄일 수 있어요.
