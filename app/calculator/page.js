@@ -302,22 +302,25 @@ export default function CalculatorPage() {
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 차종 선택
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2">
                 {CAR_CATEGORIES.map((cat) => (
-                  <button
+                  <label
                     key={cat.key}
-                    onClick={() => selectCarCategory(cat)}
-                    className={`rounded-2xl px-4 py-3 text-left transition ${
-                      carCategory === cat.key
-                        ? "bg-emerald-600 text-white"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    }`}
+                    className="flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white cursor-pointer"
                   >
-                    <p className="text-sm font-bold">{cat.label}</p>
-                    <p className={`text-xs mt-0.5 ${carCategory === cat.key ? "text-emerald-100" : "text-slate-400"}`}>
-                      {cat.desc}
-                    </p>
-                  </button>
+                    <input
+                      type="radio"
+                      name="carCategory"
+                      value={cat.key}
+                      checked={carCategory === cat.key}
+                      onChange={() => selectCarCategory(cat)}
+                      className="h-4 w-4"
+                    />
+                    <span>
+                      {cat.label}{" "}
+                      <span className="text-slate-400">({cat.desc})</span>
+                    </span>
+                  </label>
                 ))}
               </div>
               {carCategory && (
