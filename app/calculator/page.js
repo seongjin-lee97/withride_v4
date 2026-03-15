@@ -189,7 +189,7 @@ export default function CalculatorPage() {
       const roundTripKm = distanceKm * 2;
       const dailyFuel = (roundTripKm / eff) * pricePerUnit;
       const dailyToll = onewayToll * 2;
-      const dailyParking = parseFloat(parking) || 0;
+      const dailyParking = (parseFloat(parking) || 0) / (5 * 4.3);
       const dailyTotal = dailyFuel + dailyToll + dailyParking;
 
       setResult({
@@ -391,13 +391,13 @@ export default function CalculatorPage() {
             {/* 주차비 */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                일 주차비 (원, 없으면 0)
+                월 주차비 (원)
               </label>
               <input
                 type="number"
                 value={parking}
                 onChange={(e) => setParking(e.target.value)}
-                placeholder="예: 5000"
+                placeholder="예: 100000"
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:bg-white transition"
               />
             </div>
