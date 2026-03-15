@@ -5,7 +5,7 @@ export async function GET(request) {
 
   const url = new URL("https://apis.data.go.kr/B553530/CAREFF/CAREFF_LIST");
   url.searchParams.set("serviceKey", process.env.ENERGY_API_KEY);
-  url.searchParams.set("numOfRows", "10");
+  url.searchParams.set("numOfRows", "100");
   url.searchParams.set("pageNo", "1");
   url.searchParams.set("apiType", "json");
   if (model) url.searchParams.set("q2", model);
@@ -28,13 +28,15 @@ export async function GET(request) {
   };
 
   return Response.json(
-    items.map((i) => ({
-      maker: i.COMP_NM,
-      model: i.MODEL_NM,
-      fuel: i.FUEL_NM,
-      fuelKey: FUEL_MAP[i.FUEL_NM] ?? "gasoline",
-      efficiency: parseFloat(i.DISPLAY_EFF) || 0,
-      year: i.YEAR,
-    }))
+    items
+      .map((i) => ({
+        maker: i.COMP_NM,
+        model: i.MODEL_NM,
+        fuel: i.FUEL_NM,
+        fuelKey: FUEL_MAP[i.FUEL_NM] ?? "gasoline",
+        efficiency: parseFloat(i.DISPLAY_EFF) || 0,
+        year: i.YEAR,
+      }))
+      .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
   );
 }
