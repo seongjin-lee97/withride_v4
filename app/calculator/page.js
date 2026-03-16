@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Script from "next/script";
+import { calcWithridePricing } from "./pricing";
 
 const FUEL_LABELS = {
   gasoline: "휘발유",
@@ -479,9 +480,50 @@ export default function CalculatorPage() {
                   </div>
                 );
               })()}
+              {/* WithRide 운전자 예상 수익 */}
+              {(() => {
+                const pricing = calcWithridePricing(
+                  result.monthlyTotal,
+                  parseFloat(result.distanceKm)
+                );
+                return (
+                  <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 space-y-3">
+                    <p className="text-sm font-bold text-emerald-900">
+                      WithRide 운전자로 참여하면?
+                    </p>
+                    <p className="text-xs text-emerald-700">
+                      출퇴근 방향이 같은 동승자 2명씩 태울 때 예상 수익이에요.
+                    </p>
+                    <div className="space-y-2.5 pt-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">권장 탑승비</span>
+                        <span className="font-bold text-emerald-700">
+                          {pricing.suggestedPrice.toLocaleString()}원/회
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">월 예상 수익 (만근 기준)</span>
+                        <span className="font-bold text-slate-800">
+                          {pricing.monthlyIncome.toLocaleString()}원
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">출퇴근 비용 충당</span>
+                        <span className="font-bold text-emerald-600">
+                          {pricing.coveragePercent}%
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400 pt-1">
+                      탑승비 범위 {pricing.minPrice.toLocaleString()}원 ~ {pricing.maxPrice.toLocaleString()}원/회 · 편도 {result.distanceKm}km 기준
+                    </p>
+                  </div>
+                );
+              })()}
+
               <div className="rounded-3xl bg-slate-900 p-5 text-white">
                 <p className="text-sm font-bold">
-                  월 {result.monthlyTotal.toLocaleString()}원, WithRide로 줄일 수 있어요.
+                  WithRide로 출퇴근 비용 나눠요.
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
                   같은 방향 동승자와 연료비·톨비를 나눠 부담해보세요.
