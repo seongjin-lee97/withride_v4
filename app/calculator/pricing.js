@@ -1,16 +1,16 @@
 // WithRide 운전자 탑승비 산정 로직
 //
 // 기준:
-//   최소가 = 월 출퇴근 비용 ÷ (동승자 2명 × 왕복 2회 × 21.5일)
+//   최소가 = 월 출퇴근 비용 ÷ (동승자 3명 × 왕복 2회 × 21.5일)
 //            → 이 가격으로 받으면 월 출퇴근 비용이 정확히 상쇄됨
 //   최대가 = 최소가 × 2
 //   거리 기반: 짧을수록 최대가에 가깝게, 길수록 최소가에 가깝게
 
-const PASSENGERS = 2;    // 편도당 동승자 수
+const PASSENGERS = 3;    // 편도당 동승자 수
 const DIRECTIONS = 2;    // 왕복
 const WORK_DAYS = 5 * 4.3; // ≈ 21.5일/월
 
-const TOTAL_RIDES_PER_MONTH = PASSENGERS * DIRECTIONS * WORK_DAYS; // 86회
+const TOTAL_RIDES_PER_MONTH = PASSENGERS * DIRECTIONS * WORK_DAYS; // 129회
 
 const DISTANCE_SHORT_KM = 5;   // 이하: 최대가
 const DISTANCE_LONG_KM = 30;   // 이상: 최소가

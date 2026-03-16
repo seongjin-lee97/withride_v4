@@ -496,13 +496,13 @@ export default function CalculatorPage() {
                     </p>
                     <div className="space-y-2.5 pt-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">권장 탑승비</span>
+                        <span className="text-slate-500">1인당 편도 요금</span>
                         <span className="font-bold text-emerald-700">
                           {pricing.suggestedPrice.toLocaleString()}원/회
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">월 예상 수익 (만근 기준)</span>
+                        <span className="text-slate-500">월 최대 예상 수익</span>
                         <span className="font-bold text-slate-800">
                           {pricing.monthlyIncome.toLocaleString()}원
                         </span>
